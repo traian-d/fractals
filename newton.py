@@ -1,4 +1,3 @@
-from PIL import Image, ImageDraw, ImageColor
 
 
 def mandelbrot(c, iters=80):
@@ -53,8 +52,10 @@ def evaluate_function(grid, max_err, max_iter, algo):
     return {pt: algo(complex(pt[0], pt[1]), max_err, max_iter) for pt in grid}
 
 
-def get_pixel_colors(root_dict, grid, palette, decimals=8):
+def make_image(root_dict, grid, palette, image_file, width, height, decimals=8, format='JPEG'):
     import warnings
+    from PIL import Image, ImageDraw, ImageColor
+
     root_dict = {k: round(v, decimals) if isinstance(v, float) else complex(round(v.real, decimals), round(v.imag, decimals)) for (k, v) in root_dict.items()}
     roots = list(set(root_dict.values()))
     roots_len = len(roots)
@@ -66,35 +67,29 @@ def get_pixel_colors(root_dict, grid, palette, decimals=8):
         palette += ['#000000'] * pad_len
         warnings.warn(f'Palette provided had length {palette_len}, but there were {roots_len} roots. ' +
                       f'Palette was padded with {pad_len} times black.')
-    return {grid[pt]: ImageColor.getrgb(palette[color_dict[root_dict[pt]]]) for pt in root_dict}
+
+    im = Image.new('RGB', (width, height), (0, 0, 0))
+    draw = ImageDraw.Draw(im)
+
+    for pt in root_dict:
+        img_pt = grid[pt]
+        draw.point([img_pt[0], img_pt[1]], ImageColor.getrgb(palette[color_dict[root_dict[pt]]]))
+
+    im.save(image_file, format)
 
 
 if __name__ == '__main__':
-    # hues = ['#0d1b2a', '#1B263B', '#415A77', '#778DA9', '#E0E1DD']
-    # hues = ['#0B132B', '#1C2541', '#3A506B', '#5BC0BE', '#6FFFE9']
-    # hues = ['#004E64', '#00A5CF', '#9FFFCB', '#25A18E', '#7AE582']
-    # hues = ['#99D98C', '#52B69A', '#168AAD', '#1E6091', '#D9ED92']
-    hues = ['#023E8A', '#0077B6', '#90E0EF', '#CAF0F8', '#03045E'] #nuante de albastru
-    # hues = ['#FF0000', '#000000', '#ffffff', '#0000ff', '#ffff00']
-    # hues = [(0, 8, 20), (0, 29, 61), (0, 53, 102), (255, 195, 0), (255, 214, 10)]
-    # hues = [(217, 100, 42), (212, 100, 53), (209, 100, 62), (47, 100, 99), (50, 100, 100)]
+    hues = ['#023E8A', '#0077B6', '#90E0EF', '#CAF0F8', '#03045E']
 
-    WIDTH = 400
-    HEIGHT = 400
+    WIDTH = 1024
+    HEIGHT = 1024
 
-    # -2, 1, 0, 1
-    # -3, 1, -0.8, 1.25 - for narrow  x ** 5 - 3j * x**3 - (5 + 2j) * x ** 2 + 3*x + 1
     print('start')
     grid = make_evaluation_grid(-4, 0, -3, 1, w=WIDTH, h=HEIGHT)
     print('made grid')
+
     evaluated_roots = evaluate_function(grid, max_err=1e-10, max_iter=1e4, algo=newton)
     print('evaluated')
-    pixel_colors = get_pixel_colors(evaluated_roots, grid, hues, decimals=9)
+
+    make_image(evaluated_roots, grid, hues, decimals=9, image_file='images/zzz.jpg', width=WIDTH, height=HEIGHT)
     print('colored')
-    im = Image.new('RGB', (WIDTH, HEIGHT), (0, 0, 0))
-    draw = ImageDraw.Draw(im)
-
-    for pt in pixel_colors:
-        draw.point([pt[0], pt[1]], pixel_colors[pt])
-
-    im.save('zzz.jpg', 'JPEG')

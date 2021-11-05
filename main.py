@@ -82,18 +82,25 @@ def make_image(root_dict, grid, palette, image_file, width, height, file_format=
 
 
 if __name__ == '__main__':
+
+    from guppy import hpy
+
+    h = hpy()
     hues = ['#023E8A', '#0077B6', '#90E0EF', '#CAF0F8', '#03045E']
 
-    WIDTH = 10
-    HEIGHT = 10
+    WIDTH = 1024
+    HEIGHT = 1024
 
     print('start')
-    # grid = make_evaluation_grid(-4, 0, -3, 1, w=WIDTH, h=HEIGHT)
-    grid = make_evaluation_grid(-1, 1, -1, 1, w=WIDTH, h=HEIGHT)
+    grid = make_evaluation_grid(-4, 0, -3, 1, w=WIDTH, h=HEIGHT)
+    # grid = make_evaluation_grid(-1, 1, -1, 1, w=WIDTH, h=HEIGHT)
     print('made grid')
+    print(h.heap())
 
     evaluated_roots = evaluate_function(grid, max_err=1e-10, max_iter=1e4, algo=newton, decimals=9)
     print('evaluated')
+    print(h.heap())
 
     make_image(evaluated_roots, grid, hues, image_file='images/zzz.jpg', width=WIDTH, height=HEIGHT)
     print('colored')
+    print(h.heap())

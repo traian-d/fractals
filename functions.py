@@ -11,17 +11,9 @@ class Newton(fractal.Fractal):
         self.__max_err = max_err
         self.__max_iter = max_iter
         self.__decimals = decimals
-        self.__grid = self.__make_grid(re_start, re_end, im_start, im_end)
+        self.__grid = self.make_grid(re_start, re_end, im_start, im_end)
         self.__palette = ['#023E8A', '#0077B6', '#90E0EF', '#CAF0F8', '#03045E']
         self.__color_dict = {}
-
-    def __make_grid(self, re_start, re_end, im_start, im_end):
-        import numpy as np
-        range_re = re_end - re_start
-        range_im = im_end - im_start
-        return np.array([[complex(re_start + (x / self.__w) * range_re,
-                                  im_start + (y / self.__h) * range_im) for x in range(0, self.__w)]
-                         for y in range(0, self.__h)])
 
     def __compute(self, c, func, func_der):
         f_c = func(c)
@@ -41,11 +33,12 @@ class Newton(fractal.Fractal):
             output = c
         if abs(c.imag) <= 1e-10:
             output = c.real
-        return round(output, self.__decimals) if isinstance(output, float) else \
+        return complex(round(output, self.__decimals), 0) if isinstance(output, float) else \
             complex(round(output.real, self.__decimals), round(output.imag, self.__decimals))
 
     def evaluate(self, func, func_der):
         import warnings
+        import numpy as np
         compute_v = np.vectorize(self.__compute)
         computed = compute_v(self.__grid, func, func_der)
 
@@ -62,34 +55,39 @@ class Newton(fractal.Fractal):
 
         return computed
 
-    def make_image(self, evaluated):
-        from PIL import Image, ImageDraw, ImageColor
+    def get_color(self, pt):
+        return self.__palette[self.__color_dict[pt]]
 
-        im = Image.new('RGB', (self.__w, self.__h), (0, 0, 0))
-        draw = ImageDraw.Draw(im)
+    @property
+    def height(self):
+        return self.__h
 
-        for i in range(self.__w):
-            for j in range(self.__h):
-                img_pt = evaluated[i, j]
-                draw.point([i, j], ImageColor.getrgb(self.__palette[self.__color_dict[img_pt]]))
-
-        return im
+    @property
+    def width(self):
+        return self.__w
 
 
 def func(x):
-    return x ** 5 - 3j * x**3 - (5 + 2j) + x
+    # return x ** 5 - 3j * x**3 - (5 + 2j) + x
     # return x ** 5 - 3j * x**3 - (5 + 2j) * x ** 2 + 3*x + 1
-    # return x**3 - 2*x + 2
+    return x**3 - 2*x + 2
 
 
 def func_der(x):
-    return 5 * x ** 4 - 9j * x**2 + 1
+    # return 5 * x ** 4 - 9j * x**2 + 1
     # return 5 * x ** 4 - 9j * x**2 - 10 * x - 4j * x + 3
-    # return 3 * x**2 - 2
+    return 3 * x**2 - 2
 
 
 if __name__ == '__main__':
-    newt = Newton(-4, 0, -3, 1, w=1024, h=1024, max_err=1e-10, max_iter=1e4, decimals=9)
+    from guppy import hpy
+
+    h = hpy()
+
+    newt = Newton(-4, 4, -4, 4, w=1024, h=1024, max_err=1e-10, max_iter=1e2, decimals=9)
+    print(h.heap())
     evaluated = newt.evaluate(func, func_der)
+    print(h.heap())
     im = newt.make_image(evaluated)
-    im.save('images/zzz.jpg', 'JPEG')
+    print(h.heap())
+    im.save('images/zzz2.jpg', 'JPEG')

@@ -1,6 +1,58 @@
 import fractal
 
 
+class Mandelbrot(fractal.Fractal):
+    __slots__ = ('__w', '__h', '__max_iter', '__grid')
+
+    def __init__(self, re_start, re_end, im_start, im_end, max_iter=100, w=600, h=400):
+        self.__max_iter = max_iter
+        self.__w = w
+        self.__h = h
+        self.__grid = self.make_grid(re_start, re_end, im_start, im_end)
+
+    def __compute(self, c):
+        z = 0
+        n = 0
+        while abs(z) <= 4 and n < self.__max_iter:
+            z = z*z + c
+            n += 1
+        return n
+
+    def evaluate(self):
+        import numpy as np
+        compute_v = np.vectorize(self.__compute)
+        return compute_v(self.__grid)
+
+    def get_color(self, pt):
+        # Smooth coloring scheme, others exist.
+        hue = int(255 * pt / self.__max_iter)
+        saturation = 255
+        value = 255 if pt < self.__max_iter else 0
+        return hue, saturation, value
+
+    @property
+    def height(self):
+        return self.__h
+
+    @property
+    def width(self):
+        return self.__w
+
+    def make_image(self, evaluated):
+        from PIL import Image, ImageDraw
+
+        im = Image.new('HSV', (self.__w, self.__h), (0, 0, 0))
+        draw = ImageDraw.Draw(im)
+
+        for i in range(self.__w):
+            for j in range(self.__h):
+                img_pt = evaluated[i, j]
+                color = self.get_color(img_pt)
+                draw.point([i, j], color)
+
+        return im.convert('RGB')
+
+
 class Newton(fractal.Fractal):
     __slots__ = ('__w', '__h', '__max_err', '__max_iter', '__decimals', '__grid', '__palette', '__color_dict')
 
@@ -80,14 +132,13 @@ def func_der(x):
 
 
 if __name__ == '__main__':
-    from guppy import hpy
 
-    h = hpy()
+    mdb = Mandelbrot(-2, 1, -1, 1, w=int(1024 * 3/2), h=1024)
+    evaluated = mdb.evaluate()
+    im = mdb.make_image(evaluated)
+    im.save('images/mdb.jpg', 'JPEG')
 
-    newt = Newton(-4, 4, -4, 4, w=1024, h=1024, max_err=1e-10, max_iter=1e2, decimals=9)
-    print(h.heap())
-    evaluated = newt.evaluate(func, func_der)
-    print(h.heap())
-    im = newt.make_image(evaluated)
-    print(h.heap())
-    im.save('images/zzz2.jpg', 'JPEG')
+    # newt = Newton(-4, 4, -4, 4, w=1024, h=1024, max_err=1e-10, max_iter=1e2, decimals=9)
+    # evaluated = newt.evaluate(func, func_der)
+    # im = newt.make_image(evaluated)
+    # im.save('images/zzz2.jpg', 'JPEG')

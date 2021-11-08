@@ -54,10 +54,15 @@ class Mandelbrot(fractal.Fractal):
 
 
 class Newton(fractal.Fractal):
-    __slots__ = ('__w', '__h', '__max_err', '__max_iter', '__decimals', '__grid', '__palette', '__color_dict')
+    __slots__ = ('__re_start', '__re_end', '__im_start', '__im_end', '__w', '__h',
+                 '__max_err', '__max_iter', '__decimals', '__grid', '__palette', '__color_dict')
 
     def __init__(self, re_start, re_end, im_start, im_end, w=600, h=400,
                  max_err=1e-5, max_iter=1e4, decimals=8):
+        self.__re_start = re_start
+        self.__re_end = re_end
+        self.__im_start = im_start
+        self.__im_end = im_end
         self.__w = w
         self.__h = h
         self.__max_err = max_err
@@ -110,6 +115,25 @@ class Newton(fractal.Fractal):
     def get_color(self, pt):
         return self.__palette[self.__color_dict[pt]]
 
+    def get_root_adjacent_pts(self, nr_pts=5):
+        """
+        Method will return the pixel coordinates of the points nearest to each of the computed roots from __color_dict
+        :param nr_pts: Pixel window around the pixel nearest to the root.
+        :return: A list of lists, each representing a pixel coordinate.
+        """
+        re_step = (self.__re_end - self.__re_start) / self.__w
+        im_step = (self.__im_end - self.__im_start) / self.__h
+        iter_range = range(- nr_pts//2, 1 + nr_pts//2)
+        out = []
+        for root in self.__color_dict:
+            out += self.__nearest_pts(root, re_step, im_step, iter_range)
+        return out
+
+    def __nearest_pts(self, root, re_step, im_step, iter_range):
+        re_nearest = (root.real - self.__re_start) // re_step
+        im_nearest = (root.imag - self.__im_start) // im_step
+        return [[re_nearest + i, im_nearest + j] for i in iter_range for j in iter_range]
+
     @property
     def height(self):
         return self.__h
@@ -121,24 +145,31 @@ class Newton(fractal.Fractal):
 
 def func(x):
     # return x ** 5 - 3j * x**3 - (5 + 2j) + x
-    # return x ** 5 - 3j * x**3 - (5 + 2j) * x ** 2 + 3*x + 1
-    return x**3 - 2*x + 2
+    return x ** 5 - 3j * x**3 - (5 + 2j) * x ** 2 + 3*x + 1
+    # return x**3 - 2*x + 2
+    # return x**3 - 1
 
 
 def func_der(x):
     # return 5 * x ** 4 - 9j * x**2 + 1
-    # return 5 * x ** 4 - 9j * x**2 - 10 * x - 4j * x + 3
-    return 3 * x**2 - 2
+    return 5 * x ** 4 - 9j * x**2 - 10 * x - 4j * x + 3
+    # return 3 * x**2 - 2
+    # return 3 * x**2
 
 
 if __name__ == '__main__':
+    from PIL import Image, ImageDraw, ImageColor
 
-    mdb = Mandelbrot(-2, 1, -1, 1, w=int(1024 * 3/2), h=1024)
-    evaluated = mdb.evaluate()
-    im = mdb.make_image(evaluated)
-    im.save('images/mdb.jpg', 'JPEG')
+    # mdb = Mandelbrot(-2, 1, -1, 1, w=int(1024 * 3/2), h=1024)
+    # evaluated = mdb.evaluate()
+    # im = mdb.make_image(evaluated)
+    # im.save('images/mdb.jpg', 'JPEG')
 
-    # newt = Newton(-4, 4, -4, 4, w=1024, h=1024, max_err=1e-10, max_iter=1e2, decimals=9)
-    # evaluated = newt.evaluate(func, func_der)
-    # im = newt.make_image(evaluated)
-    # im.save('images/zzz2.jpg', 'JPEG')
+    newt = Newton(-4, 4, -4, 4, w=600, h=600, max_err=1e-10, max_iter=1e2, decimals=8)
+    evaluated = newt.evaluate(func, func_der)
+    near_roots = newt.get_root_adjacent_pts()
+    im = newt.make_image(evaluated)
+    draw = ImageDraw.Draw(im)
+    for pt in near_roots:
+        draw.point(pt, ImageColor.getrgb("#FF0000"))
+    im.save('images/zzz2.jpg', 'JPEG')

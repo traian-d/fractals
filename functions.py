@@ -57,7 +57,7 @@ class Newton(fractal.Fractal):
     __slots__ = ('__re_start', '__re_end', '__im_start', '__im_end', '__w', '__h',
                  '__max_err', '__max_iter', '__decimals', '__grid', '__palette', '__color_dict')
 
-    def __init__(self, re_start, re_end, im_start, im_end, w=600, h=400,
+    def __init__(self, re_start, re_end, im_start, im_end, palette, w=600, h=400,
                  max_err=1e-5, max_iter=1e4, decimals=8):
         self.__re_start = re_start
         self.__re_end = re_end
@@ -69,13 +69,13 @@ class Newton(fractal.Fractal):
         self.__max_iter = max_iter
         self.__decimals = decimals
         self.__grid = self.make_grid(re_start, re_end, im_start, im_end)
-        self.__palette = ['#023E8A', '#0077B6', '#90E0EF', '#CAF0F8', '#03045E']
+        self.__palette = palette
         self.__color_dict = {}
 
     def __compute(self, c, func, func_der):
         f_c = func(c)
         count = 0
-        output = None
+        output = c
         while abs(f_c.real) >= self.__max_err or abs(f_c.imag) >= self.__max_err:
             f_prime_c = func_der(c)
             if f_prime_c == 0:
@@ -85,11 +85,10 @@ class Newton(fractal.Fractal):
             f_c = func(c)
             count += 1
             if count >= self.__max_iter:
-                output = 0
+                # Algorithm did not converge, input default val which should be outside of normal evaluation ranges.
+                output = -1e5
                 break
             output = c
-        if abs(c.imag) <= 1e-10:
-            output = c.real
         return complex(round(output, self.__decimals), 0) if isinstance(output, float) else \
             complex(round(output.real, self.__decimals), round(output.imag, self.__decimals))
 
@@ -102,7 +101,6 @@ class Newton(fractal.Fractal):
         roots = np.unique(computed.flatten())
         roots_len = len(roots)
         palette_len = len(self.__palette)
-        self.__color_dict = {roots[i]: i for i in range(roots_len)}
         if palette_len < roots_len:
             print(roots)
             pad_len = roots_len - palette_len
@@ -110,10 +108,12 @@ class Newton(fractal.Fractal):
             warnings.warn(f'Palette provided had length {palette_len}, but there were {roots_len} roots. ' +
                           f'Palette was padded with {pad_len} times black.')
 
+        # If the algorithm didn't converge the point will be colored black
+        self.__color_dict = {roots[i]: '#000000' if roots[i].real == -1e5 else self.__palette[i] for i in range(roots_len)}
         return computed
 
     def get_color(self, pt):
-        return self.__palette[self.__color_dict[pt]]
+        return self.__color_dict[pt]
 
     def get_root_adjacent_pts(self, nr_pts=5):
         """
@@ -145,19 +145,20 @@ class Newton(fractal.Fractal):
 
 def func(x):
     # return x ** 5 - 3j * x**3 - (5 + 2j) + x
-    return x ** 5 - 3j * x**3 - (5 + 2j) * x ** 2 + 3*x + 1
-    # return x**3 - 2*x + 2
+    # return x ** 5 - 3j * x**3 - (5 + 2j) * x ** 2 + 3*x + 1
+    return x**3 - 2*x + 2
     # return x**3 - 1
 
 
 def func_der(x):
     # return 5 * x ** 4 - 9j * x**2 + 1
-    return 5 * x ** 4 - 9j * x**2 - 10 * x - 4j * x + 3
-    # return 3 * x**2 - 2
+    # return 5 * x ** 4 - 9j * x**2 - 10 * x - 4j * x + 3
+    return 3 * x**2 - 2
     # return 3 * x**2
 
 
 if __name__ == '__main__':
+    # Blue hueues: ['#023E8A', '#0077B6', '#90E0EF', '#CAF0F8', '#03045E']
     from PIL import Image, ImageDraw, ImageColor
 
     # mdb = Mandelbrot(-2, 1, -1, 1, w=int(1024 * 3/2), h=1024)
@@ -165,11 +166,12 @@ if __name__ == '__main__':
     # im = mdb.make_image(evaluated)
     # im.save('images/mdb.jpg', 'JPEG')
 
-    newt = Newton(-4, 4, -4, 4, w=600, h=600, max_err=1e-10, max_iter=1e2, decimals=8)
+    newt = Newton(-4, 4, -4, 4, w=600, h=600, max_err=1e-10, max_iter=1e2, decimals=9,
+                  palette=['#023E8A', '#0077B6', '#90E0EF', '#CAF0F8', '#03045E'])
     evaluated = newt.evaluate(func, func_der)
     near_roots = newt.get_root_adjacent_pts()
     im = newt.make_image(evaluated)
     draw = ImageDraw.Draw(im)
     for pt in near_roots:
         draw.point(pt, ImageColor.getrgb("#FF0000"))
-    im.save('images/zzz2.jpg', 'JPEG')
+    im.save('images/cubic_w_roots.jpg', 'JPEG')
